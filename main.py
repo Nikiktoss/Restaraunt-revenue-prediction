@@ -4,15 +4,17 @@ import matplotlib.pyplot as plt
 import datetime
 from sklearn import preprocessing
 from sklearn.decomposition import PCA
-
-
-# read data
+from sklearn.linear_model import LinearRegression
 from sklearn.ensemble import GradientBoostingRegressor
 from sklearn.metrics import mean_squared_error, r2_score
 
+
+# read data
 train_data = pd.read_csv('train.csv')
 test_data = pd.read_csv('test.csv')
-valid_data = pd.read_csv('sampleSubmission.csv')
+
+test_valid_data = train_data.loc[123:, :]
+train_data = train_data.iloc[:122, :]
 
 
 # dividing DataFrame into two frames: frame with numeric data and frame with category data
@@ -27,21 +29,28 @@ def divide_data(data):
 
 def edit_category_data(data):
     le = preprocessing.LabelEncoder()
+
     data['City Group'] = le.fit_transform(data['City Group'])
     data = pd.concat([data, pd.get_dummies(data.Type)], axis=1)
     data.drop(['Open Date', 'City', 'Type'], axis=1, inplace=True)
 
-    return data
+    data_cols = data.columns
+    return pd.DataFrame(np.array(data), columns=data_cols)
 
 
 def edit_number_data(data, drop_cols):
     data.drop(drop_cols, axis=1, inplace=True)
+
     x = np.log(data[['years_old']])
+    x_columns = x.columns
+    x = pd.DataFrame(np.array(x), columns=x_columns)
+
     y = np.sqrt(data.drop(['years_old'], axis=1))
     y_columns = y.columns
     sc = preprocessing.StandardScaler()
     y = sc.fit_transform(y)
     y = pd.DataFrame(y, columns=y_columns)
+
     return pd.concat([y, x], axis=1)
 
 
@@ -99,9 +108,12 @@ gbr = GradientBoostingRegressor(max_depth=3, n_estimators=components, criterion=
 gbr.fit(x_train, revenue_data)
 
 
-number_test_data, category_test_data = divide_data(test_data)
+number_test_data, category_test_data = divide_data(test_valid_data)
+number_test_data.drop("revenue", axis=1, inplace=True)
+y_test = np.array(test_valid_data['revenue'])
 category_test_data = edit_category_data(category_test_data)
-category_test_data.drop('MB', axis=1, inplace=True)
+
+category_test_data.drop('DT', axis=1, inplace=True)
 
 number_test_data = edit_number_data(number_test_data, drop)
 x_test = get_result_data(number_test_data, category_test_data)
@@ -109,16 +121,29 @@ x_test = decrease_x_using_pca(x_test, pca)
 
 
 y_predict = gbr.predict(x_test)
-y_test = valid_data['Prediction']
 y_predict = np.round(np.exp(y_predict), 2)
-mse_friedman = mean_squared_error(y_predict, y_test)
+mse_friedman = mean_squared_error(y_test, y_predict)
 
+for i in range(len(y_test)):
+    print(f"{y_test[i]}  {y_predict[i]}")
 
+# with open("output.txt", "w") as file:
+#     for i in range(len(y_predict)):
+#         print(f"{y_predict[i]}  {y_test[i]}", file=file)
 
-# print(f"MSE is {mse_friedman}")
-# print(f"RMSE is {np.sqrt(mse_friedman)}")
-# print(f"r2 is {r2_score(y_test, y_predict)}")
+print(f"MSE is {mse_friedman}")
+print(f"RMSE is {np.sqrt(mse_friedman)}")
+print(f"r2 is {r2_score(y_test, y_predict)}")
 
 # plt.plot(y_test[0:100], 'go')
 # plt.plot(y_predict[0:100], 'ro')
 # plt.show()
+
+# lr = LinearRegression()
+# lr.fit(x_train, revenue_data)
+# y_predict = lr.predict(x_test)
+# y_predict = np.round(np.exp(y_predict), 1)
+# mse_friedman = mean_squared_error(y_predict, y_test)
+# print(f"MSE is {mse_friedman}")
+# print(f"RMSE is {np.sqrt(mse_friedman)}")
+# print(f"r2 is {r2_score(y_test, y_predict)}")
