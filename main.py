@@ -1,3 +1,5 @@
+from catboost import CatBoostRegressor, Pool
+
 import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
@@ -6,144 +8,51 @@ from sklearn import preprocessing
 from sklearn.decomposition import PCA
 from sklearn.linear_model import LinearRegression
 from sklearn.ensemble import GradientBoostingRegressor
-from sklearn.metrics import mean_squared_error, r2_score
+from sklearn.model_selection import GridSearchCV
+from sklearn.metrics import mean_squared_error as mse, r2_score
 
 
 # read data
 train_data = pd.read_csv('train.csv')
 test_data = pd.read_csv('test.csv')
-
 test_valid_data = train_data.loc[123:, :]
+
 train_data = train_data.iloc[:122, :]
+
+train_cols = train_data.columns
+test_valid_data = pd.DataFrame(np.array(test_valid_data), columns=train_cols)
 
 
 # dividing DataFrame into two frames: frame with numeric data and frame with category data
 def divide_data(data):
+    cat_data = data[['Type']]
+
     now = datetime.datetime.now()
-    cat_data = data[['City', 'City Group', 'Type', 'Open Date']]
-    num_data = data.drop(['City', 'City Group', 'Type', 'Open Date'], axis=1)
+    num_data = data.drop(['City', 'City Group', 'Type', 'Open Date', 'revenue'], axis=1)
     num_data['years_old'] = now.year - pd.DatetimeIndex(data['Open Date']).year
 
     return num_data, cat_data
 
 
-def edit_category_data(data):
-    le = preprocessing.LabelEncoder()
+number_train_data, category_train_data = divide_data(train_data)
 
-    data['City Group'] = le.fit_transform(data['City Group'])
-    data = pd.concat([data, pd.get_dummies(data.Type)], axis=1)
-    data.drop(['Open Date', 'City', 'Type'], axis=1, inplace=True)
+y_train = train_data["revenue"]
+x_train = pd.concat([category_train_data, number_train_data], axis=1)
 
-    data_cols = data.columns
-    return pd.DataFrame(np.array(data), columns=data_cols)
+cb = CatBoostRegressor(n_estimators=300, loss_function="RMSE", learning_rate=0.4, depth=3, task_type='CPU',
+                       random_state=17, verbose=False)
 
-
-def edit_number_data(data, drop_cols):
-    data.drop(drop_cols, axis=1, inplace=True)
-
-    x = np.log(data[['years_old']])
-    x_columns = x.columns
-    x = pd.DataFrame(np.array(x), columns=x_columns)
-
-    y = np.sqrt(data.drop(['years_old'], axis=1))
-    y_columns = y.columns
-    sc = preprocessing.StandardScaler()
-    y = sc.fit_transform(y)
-    y = pd.DataFrame(y, columns=y_columns)
-
-    return pd.concat([y, x], axis=1)
-
-
-def draw_plots(data, revenue):
-    features = data.drop(['years_old', 'Id'], axis=1)
-    features_cols = features.columns
-    features = pd.DataFrame(np.sqrt(features), columns=features_cols)
-    revenue = np.sqrt(revenue)
-    counter = 0
-    for i in range(4):
-        figure, axis = plt.subplots(2, 5, figsize=(14, 6))
-        figure.tight_layout(h_pad=3)
-        for j in range(2):
-            for k in range(5):
-                axis[j, k].plot(features[features.columns[counter]], revenue, "ro")
-                axis[j, k].set_title(features.columns[counter])
-                counter += 1
-                if counter == len(features.columns):
-                    break
-            if counter == len(features.columns):
-                break
-        plt.show()
-
-
-def get_result_data(num_data, cat_data):
-    x_values_training = pd.concat([cat_data, num_data], axis=1)
-    return x_values_training
-
-
-def decrease_x_using_pca(x, func):
-    x = func.transform(x)
-
-    return x
-
-
-pca = PCA(0.98)
-
-number_data, category_data = divide_data(train_data)
-number_data.drop('revenue', axis=1, inplace=True)
-revenue_data = np.log(train_data['revenue'])
-category_data = edit_category_data(category_data)
-
-# draw_plots(number_data, revenue_data)
-# columns to drop, it goes from plots
-
-drop = ['P7', 'P9', 'P10', 'P13', 'P18', 'P34', 'P36']
-
-number_data = edit_number_data(number_data, drop)
-x_train = get_result_data(number_data, category_data)
-pca.fit(x_train)
-x_train = decrease_x_using_pca(x_train, pca)
-
-components = len(x_train[0])
-gbr = GradientBoostingRegressor(max_depth=3, n_estimators=components, criterion='friedman_mse', random_state=42)
-gbr.fit(x_train, revenue_data)
-
+pool_train = Pool(x_train, y_train, cat_features=['Type'])
+cb.fit(pool_train)
 
 number_test_data, category_test_data = divide_data(test_valid_data)
-number_test_data.drop("revenue", axis=1, inplace=True)
-y_test = np.array(test_valid_data['revenue'])
-category_test_data = edit_category_data(category_test_data)
 
-category_test_data.drop('DT', axis=1, inplace=True)
+y_test = np.array(test_valid_data["revenue"])
+x_test = pd.concat([category_test_data, number_test_data], axis=1)
 
-number_test_data = edit_number_data(number_test_data, drop)
-x_test = get_result_data(number_test_data, category_test_data)
-x_test = decrease_x_using_pca(x_test, pca)
+pool_test = Pool(x_test, cat_features=['Type'])
+y_predict = cb.predict(pool_test)
+print(r2_score(y_test, y_predict))
 
-
-y_predict = gbr.predict(x_test)
-y_predict = np.round(np.exp(y_predict), 2)
-mse_friedman = mean_squared_error(y_test, y_predict)
-
-for i in range(len(y_test)):
-    print(f"{y_test[i]}  {y_predict[i]}")
-
-# with open("output.txt", "w") as file:
-#     for i in range(len(y_predict)):
-#         print(f"{y_predict[i]}  {y_test[i]}", file=file)
-
-print(f"MSE is {mse_friedman}")
-print(f"RMSE is {np.sqrt(mse_friedman)}")
-print(f"r2 is {r2_score(y_test, y_predict)}")
-
-# plt.plot(y_test[0:100], 'go')
-# plt.plot(y_predict[0:100], 'ro')
-# plt.show()
-
-# lr = LinearRegression()
-# lr.fit(x_train, revenue_data)
-# y_predict = lr.predict(x_test)
-# y_predict = np.round(np.exp(y_predict), 1)
-# mse_friedman = mean_squared_error(y_predict, y_test)
-# print(f"MSE is {mse_friedman}")
-# print(f"RMSE is {np.sqrt(mse_friedman)}")
-# print(f"r2 is {r2_score(y_test, y_predict)}")
+cb_rmse = np.sqrt(mse(y_test, y_predict))
+print("RMSE in y units:", np.mean(cb_rmse))
