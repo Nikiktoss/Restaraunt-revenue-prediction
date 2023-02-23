@@ -37,9 +37,8 @@ def divide_data(data):
 number_train_data = divide_data(train_data)
 y_train = np.sqrt(train_data["revenue"])
 
-print(number_train_data.head())
 
-cb = CatBoostRegressor(n_estimators=300, loss_function="RMSE", learning_rate=0.4, depth=3, task_type='CPU',
+cb = CatBoostRegressor(n_estimators=217, loss_function="RMSE", learning_rate=0.55, depth=3, task_type='CPU',
                        random_state=17, verbose=False)
 
 pool_train = Pool(number_train_data, y_train, cat_features=['City', 'City Group', 'Type'])
