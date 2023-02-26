@@ -12,7 +12,7 @@ train_data = pd.read_csv('train.csv')
 test_data = pd.read_csv('test.csv')
 test_valid_data = train_data.loc[123:, :]
 
-train_data = train_data.iloc[:122, :]
+train_data = train_data.iloc[:123, :]
 
 train_cols = train_data.columns
 test_valid_data = pd.DataFrame(np.array(test_valid_data), columns=train_cols)
@@ -35,13 +35,13 @@ def divide_data(data):
 
 
 number_train_data = divide_data(train_data)
-y_train = np.sqrt(train_data["revenue"])
+y_train = np.sqrt(train_data[["revenue"]])
 
-
-cb = CatBoostRegressor(n_estimators=217, loss_function="RMSE", learning_rate=0.55, depth=3, task_type='CPU',
+cb = CatBoostRegressor(n_estimators=225, loss_function="RMSE", learning_rate=0.6151, depth=3, task_type='CPU',
                        random_state=17, verbose=False)
 
 pool_train = Pool(number_train_data, y_train, cat_features=['City', 'City Group', 'Type'])
+
 cb.fit(pool_train)
 
 number_test_data = divide_data(test_valid_data)
