@@ -44,16 +44,6 @@ def edit_num_data(data):
     return num_data
 
 
-def edit_cat_data(data):
-    le = preprocessing.LabelEncoder()
-    cat_data = pd.DataFrame()
-
-    cat_data["City Group"] = le.fit_transform(data["City Group"])
-    cat_data["City"] = le.fit_transform(data["City"])
-
-    return cat_data
-
-
 def create_model():
     model = keras.Sequential()
     model.add(Dense(40, input_dim=40, activation='relu'))
