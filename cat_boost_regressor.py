@@ -34,21 +34,23 @@ def divide_data(data):
     return pd.concat([cat_data, num_data], axis=1)
 
 
-number_train_data = divide_data(train_data)
-y_train = np.sqrt(train_data[["revenue"]])
+x_train = divide_data(train_data)
+w = np.sqrt(sum(train_data["revenue"] ** 2))
+y_train = np.sqrt(train_data["revenue"]) / w
+
 
 cb = CatBoostRegressor(n_estimators=225, loss_function="RMSE", learning_rate=0.6151, depth=3, task_type='CPU',
                        random_state=17, verbose=False)
-
-pool_train = Pool(number_train_data, y_train, cat_features=['City', 'City Group', 'Type'])
-
+pool_train = Pool(x_train, y_train, cat_features=['City', 'City Group', 'Type'])
 cb.fit(pool_train)
 
-number_test_data = divide_data(test_valid_data)
-y_test = test_valid_data["revenue"]
 
-pool_test = Pool(number_test_data, cat_features=['City', 'City Group', 'Type'])
-y_predict = np.power(cb.predict(pool_test), 2)
+x_test = divide_data(test_valid_data)
+y_test = test_valid_data['revenue']
+
+pool_test = Pool(x_test, cat_features=['City', 'City Group', 'Type'])
+y_predict = np.power(cb.predict(pool_test) * w, 2)
+
 print(r2_score(y_test, y_predict))
 
 cb_rmse = np.sqrt(mse(y_test, y_predict))
