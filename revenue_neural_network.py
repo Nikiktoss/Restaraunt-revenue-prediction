@@ -1,3 +1,5 @@
+import random
+
 import keras
 from keras.layers import Dense
 import category_encoders as ce
@@ -7,10 +9,11 @@ import pandas as pd
 import numpy as np
 import datetime
 from sklearn import preprocessing
-from sklearn.metrics import mean_squared_error as mse, r2_score
+from sklearn.metrics import mean_squared_error as mse, r2_score, mean_absolute_error as mae
 
 
 seed = 0
+random.seed(seed)
 np.random.seed(seed)
 tensorflow.random.set_seed(seed)
 
@@ -67,9 +70,6 @@ cbe_encoder = ce.cat_boost.CatBoostEncoder()
 cbe_encoder.fit(x_train, y_train)
 x_train = cbe_encoder.transform(x_train)
 
-print(x_train)
-
-# print(x_train)
 
 revenue_model = create_model()
 history = revenue_model.fit(x_train, y_train, epochs=70, verbose=False)
@@ -85,8 +85,7 @@ y_test = test_valid_data["revenue"]
 
 y_predict = revenue_model.predict(x_test) * 10 ** 6
 
-print(f'R2 is {r2_score(test_valid_data["revenue"], y_predict)}')
-cb_rmse = np.sqrt(mse(test_valid_data["revenue"], y_predict))
+print(f'R2 is {r2_score(y_test, y_predict)}')
+cb_rmse = np.sqrt(mse(y_test, y_predict))
+print(f"MAE is {mae(y_test, y_predict)}")
 print("RMSE in y units:", np.mean(cb_rmse))
-
-# print(y_predict)
