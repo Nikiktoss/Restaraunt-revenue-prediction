@@ -28,7 +28,7 @@ test_valid_data = pd.DataFrame(np.array(test_valid_data), columns=train_cols)
 
 
 def divide_data(data):
-    cat_data = data[["City", "City Group"]]
+    cat_data = data[["City Group", "City"]]
     num_data = data.drop(["Id", "City", "City Group", "Type", "revenue"], axis=1)
 
     return num_data, cat_data
@@ -49,10 +49,16 @@ def edit_num_data(data):
 
 def create_model():
     model = keras.Sequential()
-    model.add(Dense(40, input_dim=40, activation='relu'))
-    model.add(Dense(80, input_dim=80, activation='relu'))
-    model.add(Dense(80, input_dim=80, activation='relu'))
-    model.add(Dense(80, input_dim=80, activation='relu'))
+    model.add(Dense(80, input_dim=40, activation='relu'))
+
+    model.add(Dense(80, activation='relu'))
+    model.add(Dense(80, activation='relu'))
+    model.add(Dense(120, activation='relu'))
+
+    model.add(Dense(160))
+    model.add(Dense(160))
+
+    model.add(Dense(40))
     model.add(Dense(1, activation='linear'))
 
     model.compile(optimizer='rmsprop', loss='mse', metrics=['mae'])
@@ -63,8 +69,8 @@ number_train_data, category_train_data = divide_data(train_data)
 number_train_data = edit_num_data(number_train_data)
 
 x_train = pd.concat([category_train_data, number_train_data], axis=1)
-
-y_train = train_data["revenue"] / 10 ** 6
+w = np.sqrt(sum(train_data["revenue"]))
+y_train = train_data["revenue"] / w
 
 cbe_encoder = ce.cat_boost.CatBoostEncoder()
 cbe_encoder.fit(x_train, y_train)
@@ -83,7 +89,7 @@ x_test = cbe_encoder.transform(x_test)
 
 y_test = test_valid_data["revenue"]
 
-y_predict = revenue_model.predict(x_test) * 10 ** 6
+y_predict = revenue_model.predict(x_test) * w
 
 print(f'R2 is {r2_score(y_test, y_predict)}')
 cb_rmse = np.sqrt(mse(y_test, y_predict))
