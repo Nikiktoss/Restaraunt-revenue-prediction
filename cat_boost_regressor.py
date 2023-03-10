@@ -1,4 +1,5 @@
-from catboost import CatBoostRegressor, Pool
+from catboost import CatBoostRegressor
+import category_encoders as ce
 
 import pandas as pd
 import numpy as np
@@ -38,21 +39,23 @@ x_train = divide_data(train_data)
 w = sum(train_data["revenue"])
 y_train = np.sqrt(train_data["revenue"]) / np.sqrt(w)
 
+cbe_encoder = ce.cat_boost.CatBoostEncoder()
+cbe_encoder.fit(x_train, y_train)
+x_train = cbe_encoder.transform(x_train)
 
-cb = CatBoostRegressor(n_estimators=225, loss_function="RMSE", learning_rate=0.6251, depth=3, task_type='CPU',
-                       random_state=17, verbose=False)
-pool_train = Pool(x_train, y_train, cat_features=['City', 'City Group', 'Type'])
-cb.fit(pool_train)
+
+cb = CatBoostRegressor(n_estimators=250, loss_function="RMSE", learning_rate=0.50905, depth=3, task_type='CPU',
+                       random_state=38, verbose=False)
+cb.fit(x_train, y_train)
 
 
 x_test = divide_data(test_valid_data)
 y_test = test_valid_data['revenue']
+x_test = cbe_encoder.transform(x_test)
 
-pool_test = Pool(x_test, cat_features=['City', 'City Group', 'Type'])
-y_predict = np.power(cb.predict(pool_test) * np.sqrt(w), 2)
+y_predict = np.power(cb.predict(x_test) * np.sqrt(w), 2)
 
 print(r2_score(y_test, y_predict))
-
 cb_rmse = np.sqrt(mse(y_test, y_predict))
 print(f"MAE is {mae(y_test, y_predict)}")
 print("RMSE in y units:", np.mean(cb_rmse))
