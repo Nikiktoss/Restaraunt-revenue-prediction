@@ -4,7 +4,6 @@ import category_encoders as ce
 import pandas as pd
 import numpy as np
 import datetime
-from sklearn import preprocessing
 from sklearn.metrics import mean_squared_error as mse, r2_score, mean_absolute_error as mae
 
 
@@ -22,36 +21,51 @@ test_valid_data = pd.DataFrame(np.array(test_valid_data), columns=train_cols)
 # dividing DataFrame into two frames: frame with numeric data and frame with category data
 def divide_data(data):
     now = datetime.datetime.now()
-    scale = preprocessing.Normalizer()
 
     cat_data = data[['City', 'City Group', 'Type']]
 
-    num_data = data.drop(['City', 'City Group', 'Type', 'Open Date', 'revenue'], axis=1)
+    num_data = data.drop(['Id', 'City', 'City Group', 'Type', 'Open Date', 'revenue'], axis=1)
     num_data['years_old'] = (now - pd.DatetimeIndex(data['Open Date'])).days // 365
 
-    num_cols = num_data.columns
-    num_data = pd.DataFrame(scale.fit_transform(num_data), columns=num_cols)
-
-    return pd.concat([cat_data, num_data], axis=1)
+    return num_data, cat_data
 
 
-x_train = divide_data(train_data)
+def normalize_train_data(data):
+    min_values = data.min()
+    max_values = data.max()
+
+    data = (data - min_values) / (max_values - min_values)
+    return data, min_values, max_values
+
+
+def normalize_test_data(data, min_values, max_values):
+    data = (data - min_values) / (max_values - min_values)
+    return data
+
+
+train_num_data, train_cat_data = divide_data(train_data)
+train_num_data, min_norm, max_norm = normalize_train_data(train_num_data)
+
 w = sum(train_data["revenue"])
 y_train = np.sqrt(train_data["revenue"]) / np.sqrt(w)
+x_train = pd.concat([train_cat_data, train_num_data], axis=1)
 
 cbe_encoder = ce.cat_boost.CatBoostEncoder()
 cbe_encoder.fit(x_train, y_train)
 x_train = cbe_encoder.transform(x_train)
 
 
-cb = CatBoostRegressor(n_estimators=250, loss_function="RMSE", learning_rate=0.50905, depth=3, task_type='CPU',
-                       random_state=38, verbose=False)
+cb = CatBoostRegressor(n_estimators=212, loss_function="RMSE", learning_rate=0.5991006, depth=3, task_type='CPU',
+                       random_state=31, verbose=False)
 cb.fit(x_train, y_train)
 
 
-x_test = divide_data(test_valid_data)
-y_test = test_valid_data['revenue']
+test_num_data, test_cat_data = divide_data(test_valid_data)
+test_num_data = normalize_test_data(test_num_data, min_norm, max_norm)
+
+x_test = pd.concat([test_cat_data, test_num_data], axis=1)
 x_test = cbe_encoder.transform(x_test)
+y_test = test_valid_data['revenue']
 
 y_predict = np.power(cb.predict(x_test) * np.sqrt(w), 2)
 
