@@ -55,8 +55,8 @@ cbe_encoder.fit(x_train, y_train)
 x_train = cbe_encoder.transform(x_train)
 
 
-cb = CatBoostRegressor(n_estimators=212, loss_function="RMSE", learning_rate=0.5991006, depth=3, task_type='CPU',
-                       random_state=31, verbose=False)
+cb = CatBoostRegressor(n_estimators=250, loss_function="RMSE", learning_rate=0.59, depth=3, task_type='CPU',
+                       random_state=18, verbose=False)
 cb.fit(x_train, y_train)
 
 
