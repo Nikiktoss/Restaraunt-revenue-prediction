@@ -8,7 +8,8 @@ import tensorflow
 import pandas as pd
 import numpy as np
 import datetime
-from sklearn import preprocessing
+
+from sklearn.neural_network import MLPRegressor
 from sklearn.metrics import mean_squared_error as mse, r2_score, mean_absolute_error as mae
 
 
@@ -28,68 +29,53 @@ test_valid_data = pd.DataFrame(np.array(test_valid_data), columns=train_cols)
 
 
 def divide_data(data):
-    cat_data = data[["City Group", "City"]]
-    num_data = data.drop(["Id", "City", "City Group", "Type", "revenue"], axis=1)
+    now = datetime.datetime.now()
+
+    cat_data = data[['City', 'City Group', 'Type']]
+
+    num_data = data.drop(['Id', 'City', 'City Group', 'Type', 'Open Date', 'revenue'], axis=1)
+    num_data['years_old'] = (now - pd.DatetimeIndex(data['Open Date'])).days // 365
 
     return num_data, cat_data
 
 
-def edit_num_data(data):
-    now = datetime.datetime.now()
-    scale = preprocessing.Normalizer()
+def normalize_train_data(data):
+    min_values = data.min()
+    max_values = data.max()
 
-    data['years_old'] = (now - pd.DatetimeIndex(data['Open Date'])).days // 365
-    data.drop("Open Date", axis=1, inplace=True)
-
-    num_cols = data.columns
-    num_data = pd.DataFrame(scale.fit_transform(data), columns=num_cols)
-
-    return num_data
+    data = (data - min_values) / (max_values - min_values)
+    return data, min_values, max_values
 
 
-def create_model():
-    model = keras.Sequential()
-    model.add(Dense(80, input_dim=40, activation='relu'))
-
-    model.add(Dense(80, activation='relu'))
-    model.add(Dense(80, activation='relu'))
-    model.add(Dense(120, activation='relu'))
-
-    model.add(Dense(160))
-    model.add(Dense(160))
-
-    model.add(Dense(40))
-    model.add(Dense(1, activation='linear'))
-
-    model.compile(optimizer='rmsprop', loss='mse', metrics=['mae'])
-    return model
+def normalize_test_data(data, min_values, max_values):
+    data = (data - min_values) / (max_values - min_values)
+    return data
 
 
-number_train_data, category_train_data = divide_data(train_data)
-number_train_data = edit_num_data(number_train_data)
+train_num_data, train_cat_data = divide_data(train_data)
+train_num_data, min_norm, max_norm = normalize_train_data(train_num_data)
 
-x_train = pd.concat([category_train_data, number_train_data], axis=1)
-w = np.sqrt(sum(train_data["revenue"]))
-y_train = train_data["revenue"] / w
+w = sum(train_data["revenue"])
+y_train = np.sqrt(train_data["revenue"]) / np.sqrt(w)
+x_train = pd.concat([train_cat_data, train_num_data], axis=1)
 
 cbe_encoder = ce.cat_boost.CatBoostEncoder()
 cbe_encoder.fit(x_train, y_train)
 x_train = cbe_encoder.transform(x_train)
 
 
-revenue_model = create_model()
-history = revenue_model.fit(x_train, y_train, epochs=70, verbose=False)
+model_mlp = MLPRegressor(hidden_layer_sizes=(82, 20, 1), activation='relu', solver='lbfgs')
+model_mlp.fit(x_train, y_train)
 
-number_test_data, category_test_data = divide_data(test_valid_data)
 
-number_test_data = edit_num_data(number_test_data)
+test_num_data, test_cat_data = divide_data(test_valid_data)
+test_num_data = normalize_test_data(test_num_data, min_norm, max_norm)
 
-x_test = pd.concat([category_test_data, number_test_data], axis=1)
+x_test = pd.concat([test_cat_data, test_num_data], axis=1)
 x_test = cbe_encoder.transform(x_test)
+y_test = test_valid_data['revenue']
 
-y_test = test_valid_data["revenue"]
-
-y_predict = revenue_model.predict(x_test) * w
+y_predict = np.power(model_mlp.predict(np.double(x_test)) * np.sqrt(w), 2)
 
 print(f'R2 is {r2_score(y_test, y_predict)}')
 cb_rmse = np.sqrt(mse(y_test, y_predict))
