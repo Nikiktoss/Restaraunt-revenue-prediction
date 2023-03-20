@@ -9,6 +9,7 @@ import pandas as pd
 import numpy as np
 import datetime
 
+from keras.regularizers import l1
 from sklearn.neural_network import MLPRegressor
 from sklearn.metrics import mean_squared_error as mse, r2_score, mean_absolute_error as mae
 
@@ -52,6 +53,44 @@ def normalize_test_data(data, min_values, max_values):
     return data
 
 
+def create_model():
+    model = keras.Sequential()
+
+    model.add(Dense(41, input_dim=41, kernel_initializer='normal', activation='relu', kernel_regularizer=l1(0.01)))
+    model.add(Dense(41, kernel_initializer='normal', activation='relu'))
+    model.add(Dense(41, kernel_initializer='normal', activation='relu'))
+    model.add(Dense(1))
+
+    model.compile(loss='mean_squared_error', optimizer='rmsprop')
+    return model
+
+
+def large_model():
+    model = keras.Sequential()
+
+    model.add(Dense(41, input_dim=41, kernel_initializer='normal', activation='relu', kernel_regularizer=l1(0.01)))
+    model.add(Dense(41, kernel_initializer='normal', activation='relu'))
+    model.add(Dense(41, activation='relu'))
+    model.add(Dense(6))
+    model.add(Dense(1))
+
+    model.compile(loss='mean_squared_error', optimizer='rmsprop')
+    return model
+
+
+def wide_model():
+    model = keras.Sequential()
+
+    model.add(Dense(82, input_dim=41, activation='relu', kernel_regularizer=l1(0.01)))
+    model.add(Dense(41, activation='relu'))
+    model.add(Dense(41, activation='relu'))
+    model.add(Dense(41))
+    model.add(Dense(1))
+
+    model.compile(loss='mean_squared_error', optimizer='rmsprop')
+    return model
+
+
 train_num_data, train_cat_data = divide_data(train_data)
 train_num_data, min_norm, max_norm = normalize_train_data(train_num_data)
 
@@ -63,10 +102,11 @@ cbe_encoder = ce.cat_boost.CatBoostEncoder()
 cbe_encoder.fit(x_train, y_train)
 x_train = cbe_encoder.transform(x_train)
 
-
 model_mlp = MLPRegressor(hidden_layer_sizes=(82, 20, 1), activation='relu', solver='lbfgs')
 model_mlp.fit(x_train, y_train)
 
+# revenue_model = wide_model()
+# hist2 = revenue_model.fit(x_train, y_train, epochs=70, verbose=False)
 
 test_num_data, test_cat_data = divide_data(test_valid_data)
 test_num_data = normalize_test_data(test_num_data, min_norm, max_norm)
