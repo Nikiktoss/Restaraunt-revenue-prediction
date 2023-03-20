@@ -1,7 +1,7 @@
 import random
 
 import keras
-from keras.layers import Dense
+from keras.layers import Dense, Dropout, Flatten, Conv1D, MaxPooling1D
 import category_encoders as ce
 import tensorflow
 
@@ -9,8 +9,7 @@ import pandas as pd
 import numpy as np
 import datetime
 
-from keras.regularizers import l1
-from sklearn.neural_network import MLPRegressor
+import matplotlib.pyplot as plt
 from sklearn.metrics import mean_squared_error as mse, r2_score, mean_absolute_error as mae
 
 
@@ -55,36 +54,17 @@ def normalize_test_data(data, min_values, max_values):
 
 def create_model():
     model = keras.Sequential()
+    model.add(Conv1D(50, kernel_size=2, input_shape=(41, 1), activation='relu'))
+    # model.add(Dense(82, kernel_initializer='normal', activation='relu'))
+    model.add(MaxPooling1D())
 
-    model.add(Dense(41, input_dim=41, kernel_initializer='normal', activation='relu', kernel_regularizer=l1(0.01)))
+    model.add(Flatten())
     model.add(Dense(41, kernel_initializer='normal', activation='relu'))
-    model.add(Dense(41, kernel_initializer='normal', activation='relu'))
-    model.add(Dense(1))
 
-    model.compile(loss='mean_squared_error', optimizer='rmsprop')
-    return model
+    # model.add(Dropout(0.5))
+    # model.add(Dense(41, kernel_initializer='normal', activation='relu'))
+    # model.add(Dense(82, kernel_initializer='normal', activation='relu'))
 
-
-def large_model():
-    model = keras.Sequential()
-
-    model.add(Dense(41, input_dim=41, kernel_initializer='normal', activation='relu', kernel_regularizer=l1(0.01)))
-    model.add(Dense(41, kernel_initializer='normal', activation='relu'))
-    model.add(Dense(41, activation='relu'))
-    model.add(Dense(6))
-    model.add(Dense(1))
-
-    model.compile(loss='mean_squared_error', optimizer='rmsprop')
-    return model
-
-
-def wide_model():
-    model = keras.Sequential()
-
-    model.add(Dense(82, input_dim=41, activation='relu', kernel_regularizer=l1(0.01)))
-    model.add(Dense(41, activation='relu'))
-    model.add(Dense(41, activation='relu'))
-    model.add(Dense(41))
     model.add(Dense(1))
 
     model.compile(loss='mean_squared_error', optimizer='rmsprop')
@@ -100,24 +80,30 @@ x_train = pd.concat([train_cat_data, train_num_data], axis=1)
 
 cbe_encoder = ce.cat_boost.CatBoostEncoder()
 cbe_encoder.fit(x_train, y_train)
-x_train = cbe_encoder.transform(x_train)
+x_train = np.array(cbe_encoder.transform(x_train))
+x_train = x_train.reshape(x_train.shape[0], x_train.shape[1], 1)
 
-model_mlp = MLPRegressor(hidden_layer_sizes=(82, 20, 1), activation='relu', solver='lbfgs')
-model_mlp.fit(x_train, y_train)
 
-# revenue_model = wide_model()
-# hist2 = revenue_model.fit(x_train, y_train, epochs=70, verbose=False)
+revenue_model = create_model()
+hist2 = revenue_model.fit(x_train, y_train, epochs=70, batch_size=90, verbose=False)
+
 
 test_num_data, test_cat_data = divide_data(test_valid_data)
 test_num_data = normalize_test_data(test_num_data, min_norm, max_norm)
 
 x_test = pd.concat([test_cat_data, test_num_data], axis=1)
-x_test = cbe_encoder.transform(x_test)
+x_test = np.array(cbe_encoder.transform(x_test))
+x_test = x_test.reshape(x_test.shape[0], x_test.shape[1], 1)
 y_test = test_valid_data['revenue']
 
-y_predict = np.power(model_mlp.predict(np.double(x_test)) * np.sqrt(w), 2)
+
+y_predict = np.power(revenue_model.predict(np.double(x_test)) * np.sqrt(w), 2)
 
 print(f'R2 is {r2_score(y_test, y_predict)}')
 cb_rmse = np.sqrt(mse(y_test, y_predict))
 print(f"MAE is {mae(y_test, y_predict)}")
 print("RMSE in y units:", np.mean(cb_rmse))
+
+plt.plot(y_test)
+plt.plot(y_predict)
+plt.show()
