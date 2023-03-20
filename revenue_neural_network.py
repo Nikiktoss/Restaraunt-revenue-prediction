@@ -54,9 +54,11 @@ def normalize_test_data(data, min_values, max_values):
 
 def create_model():
     model = keras.Sequential()
+
     model.add(Conv1D(50, kernel_size=2, input_shape=(41, 1), activation='relu'))
-    # model.add(Dense(82, kernel_initializer='normal', activation='relu'))
-    model.add(MaxPooling1D())
+    model.add(MaxPooling1D(pool_size=2))
+    model.add(Conv1D(100, kernel_size=2, input_shape=(41, 1), activation='relu'))
+    model.add(MaxPooling1D(pool_size=2))
 
     model.add(Flatten())
     model.add(Dense(41, kernel_initializer='normal', activation='relu'))
