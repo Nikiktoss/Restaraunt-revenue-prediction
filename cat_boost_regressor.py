@@ -18,7 +18,6 @@ train_cols = train_data.columns
 test_valid_data = pd.DataFrame(np.array(test_valid_data), columns=train_cols)
 
 
-# dividing DataFrame into two frames: frame with numeric data and frame with category data
 def divide_data(data):
     now = datetime.datetime.now()
 
@@ -55,8 +54,8 @@ cbe_encoder.fit(x_train, y_train)
 x_train = cbe_encoder.transform(x_train)
 
 
-cb = CatBoostRegressor(n_estimators=250, loss_function="RMSE", learning_rate=0.59, depth=3, task_type='CPU',
-                       random_state=18, verbose=False)
+cb = CatBoostRegressor(n_estimators=250, loss_function="RMSE", learning_rate=0.5, depth=3, task_type='CPU',
+                       random_state=19, verbose=False)
 cb.fit(x_train, y_train)
 
 
