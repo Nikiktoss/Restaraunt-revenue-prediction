@@ -1,7 +1,7 @@
 import random
 
 import keras
-from keras.layers import Dense, Dropout, Flatten, Conv1D, MaxPooling1D
+from keras.layers import Dense, Dropout, Flatten, Conv2D, MaxPooling2D
 import category_encoders as ce
 import tensorflow
 
@@ -31,7 +31,7 @@ test_valid_data = pd.DataFrame(np.array(test_valid_data), columns=train_cols)
 def divide_data(data):
     now = datetime.datetime.now()
 
-    cat_data = data[['City', 'City Group', 'Type']]
+    cat_data = data[['City', 'City Group']]
 
     num_data = data.drop(['Id', 'City', 'City Group', 'Type', 'Open Date', 'revenue'], axis=1)
     num_data['years_old'] = (now - pd.DatetimeIndex(data['Open Date'])).days // 365
@@ -55,17 +55,20 @@ def normalize_test_data(data, min_values, max_values):
 def create_model():
     model = keras.Sequential()
 
-    model.add(Conv1D(50, kernel_size=2, input_shape=(41, 1), activation='relu'))
-    model.add(MaxPooling1D(pool_size=2))
-    model.add(Conv1D(100, kernel_size=2, input_shape=(41, 1), activation='relu'))
-    model.add(MaxPooling1D(pool_size=2))
+    model.add(Conv2D(20, kernel_size=(3, 3), padding='same', input_shape=(10, 4, 1), activation='relu'))
+    model.add(MaxPooling2D((2, 2), strides=2))
+
+    model.add(Conv2D(40, (3, 3), padding='same', activation='relu'))
+    model.add(MaxPooling2D((2, 1), strides=1))
 
     model.add(Flatten())
-    model.add(Dense(41, kernel_initializer='normal', activation='relu'))
 
-    # model.add(Dropout(0.5))
+    model.add(Dense(10, kernel_initializer='normal', activation='relu'))
+    # model.add(Dropout(0.3))
+    # model.add(Dense(80, kernel_initializer='normal', activation='relu'))
+    # model.add(Dropout(0.4))
     # model.add(Dense(41, kernel_initializer='normal', activation='relu'))
-    # model.add(Dense(82, kernel_initializer='normal', activation='relu'))
+    # model.add(Dense(5, kernel_initializer='normal', activation='relu'))
 
     model.add(Dense(1))
 
@@ -83,8 +86,7 @@ x_train = pd.concat([train_cat_data, train_num_data], axis=1)
 cbe_encoder = ce.cat_boost.CatBoostEncoder()
 cbe_encoder.fit(x_train, y_train)
 x_train = np.array(cbe_encoder.transform(x_train))
-x_train = x_train.reshape(x_train.shape[0], x_train.shape[1], 1)
-
+x_train = x_train.reshape(x_train.shape[0], 10, 4, 1)
 
 revenue_model = create_model()
 hist2 = revenue_model.fit(x_train, y_train, epochs=70, batch_size=90, verbose=False)
@@ -95,7 +97,7 @@ test_num_data = normalize_test_data(test_num_data, min_norm, max_norm)
 
 x_test = pd.concat([test_cat_data, test_num_data], axis=1)
 x_test = np.array(cbe_encoder.transform(x_test))
-x_test = x_test.reshape(x_test.shape[0], x_test.shape[1], 1)
+x_test = x_test.reshape(x_test.shape[0], 10, 4, 1)
 y_test = test_valid_data['revenue']
 
 
