@@ -62,10 +62,11 @@ def create_model():
     model.add(MaxPooling2D((2, 1), strides=1))
 
     model.add(Flatten())
+    model.add(Dropout(0.1))
 
     model.add(Dense(10, kernel_initializer='normal', activation='relu'))
     # model.add(Dropout(0.3))
-    # model.add(Dense(80, kernel_initializer='normal', activation='relu'))
+    # model.add(Dense(30, kernel_initializer='normal'))
     # model.add(Dropout(0.4))
     # model.add(Dense(41, kernel_initializer='normal', activation='relu'))
     # model.add(Dense(5, kernel_initializer='normal', activation='relu'))
