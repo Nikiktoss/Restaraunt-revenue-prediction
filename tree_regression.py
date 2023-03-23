@@ -55,7 +55,7 @@ cbe_encoder.fit(x_train, y_train)
 x_train = cbe_encoder.transform(x_train)
 
 
-tree_reg = tree.DecisionTreeRegressor(random_state=0, max_depth=14)
+tree_reg = tree.DecisionTreeRegressor(random_state=30, max_depth=14)
 tree_reg = tree_reg.fit(x_train, y_train)
 
 
