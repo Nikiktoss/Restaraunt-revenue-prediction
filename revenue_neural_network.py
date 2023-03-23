@@ -1,7 +1,7 @@
 import random
 
 import keras
-from keras.layers import Dense, Dropout, Flatten, Conv2D, MaxPooling2D
+from keras.layers import Dense, Dropout, Flatten, Conv2D, MaxPooling2D, BatchNormalization
 import category_encoders as ce
 import tensorflow
 
@@ -56,10 +56,16 @@ def create_model():
     model = keras.Sequential()
 
     model.add(Conv2D(20, kernel_size=(3, 3), padding='same', input_shape=(10, 4, 1), activation='relu'))
+    model.add(Conv2D(20, kernel_size=(3, 3), padding='same', activation='relu'))
     model.add(MaxPooling2D((2, 2), strides=2))
 
     model.add(Conv2D(40, (3, 3), padding='same', activation='relu'))
+    model.add(Conv2D(40, (3, 3), padding='same'))
     model.add(MaxPooling2D((2, 1), strides=1))
+
+    # model.add(Conv2D(10, (3, 3), padding='same', activation='relu'))
+    # model.add(Conv2D(10, (3, 3), padding='same'))
+    # model.add(MaxPooling2D((2, 1), strides=1))
 
     model.add(Flatten())
     model.add(Dropout(0.1))
@@ -90,7 +96,7 @@ x_train = np.array(cbe_encoder.transform(x_train))
 x_train = x_train.reshape(x_train.shape[0], 10, 4, 1)
 
 revenue_model = create_model()
-hist2 = revenue_model.fit(x_train, y_train, epochs=70, batch_size=90, verbose=False)
+hist2 = revenue_model.fit(x_train, y_train, epochs=70, batch_size=90,  verbose=False)
 
 
 test_num_data, test_cat_data = divide_data(test_valid_data)
@@ -109,6 +115,6 @@ cb_rmse = np.sqrt(mse(y_test, y_predict))
 print(f"MAE is {mae(y_test, y_predict)}")
 print("RMSE in y units:", np.mean(cb_rmse))
 
-plt.plot(y_test)
-plt.plot(y_predict)
+plt.plot(y_test, 'ro')
+plt.plot(y_predict, 'go')
 plt.show()
