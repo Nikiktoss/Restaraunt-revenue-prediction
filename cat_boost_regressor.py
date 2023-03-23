@@ -6,8 +6,9 @@ import numpy as np
 import datetime
 from sklearn.metrics import mean_squared_error as mse, r2_score, mean_absolute_error as mae
 
+import matplotlib.pyplot as plt
 
-# read data
+
 train_data = pd.read_csv('train.csv')
 test_data = pd.read_csv('test.csv')
 test_valid_data = train_data.loc[123:, :]
@@ -54,8 +55,8 @@ cbe_encoder.fit(x_train, y_train)
 x_train = cbe_encoder.transform(x_train)
 
 
-cb = CatBoostRegressor(n_estimators=250, loss_function="RMSE", learning_rate=0.5, depth=3, task_type='CPU',
-                       random_state=19, verbose=False)
+cb = CatBoostRegressor(n_estimators=250, loss_function="RMSE", learning_rate=0.524, depth=3, task_type='CPU',
+                       verbose=False)
 cb.fit(x_train, y_train)
 
 
@@ -68,7 +69,11 @@ y_test = test_valid_data['revenue']
 
 y_predict = np.power(cb.predict(x_test) * np.sqrt(w), 2)
 
-print(r2_score(y_test, y_predict))
+print(f"R2 is {r2_score(y_test, y_predict)}")
 cb_rmse = np.sqrt(mse(y_test, y_predict))
 print(f"MAE is {mae(y_test, y_predict)}")
 print("RMSE in y units:", np.mean(cb_rmse))
+
+plt.plot(y_test, 'ro')
+plt.plot(y_predict, 'go')
+plt.show()
